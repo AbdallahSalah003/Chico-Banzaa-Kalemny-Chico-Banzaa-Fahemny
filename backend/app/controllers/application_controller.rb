@@ -1,4 +1,8 @@
 class ApplicationController < ActionController::API
+  include ActionController::Flash
+
+  respond_to :json
+  
   #this make sure Devise accepts our custom fields
   before_action :configure_permitted_parameters, if: :devise_controller?
 

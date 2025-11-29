@@ -35,4 +35,24 @@ class Api::V1::UsersController < ApplicationController
       render json: { error: "Unauthorrized"}, status: :forbidden
     end 
   end 
+
+  def update 
+    user = User.find(params[:id])
+    if current_user.id == user.id || current_user.admin? 
+      if user.update(user_update_params)
+        render json: { message: "Profile updateed succeessfully", user: user}
+      else 
+        render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
+      end
+    else 
+      render json: {error: "You aren't authorized for this edits"}, status: :forbidden
+    end 
+  end 
+  private 
+  def user_update_params
+    params.require(:user).permit(
+      :first_name, :last_name, :birth_date,
+      :gender, :city, :address
+    )
+  end
 end

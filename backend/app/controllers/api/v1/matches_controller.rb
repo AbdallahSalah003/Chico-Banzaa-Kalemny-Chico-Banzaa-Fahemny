@@ -9,7 +9,7 @@ class Api::V1::MatchesController < ApplicationController
   def show
     @match = Match.find(params[:id])
     #allowing sami draw the red/green boxes
-    reserved_seats = @match.tickets.select(:row, :seat)
+    reserved_seats = @match.tickets.select(:row, :seat, :id)
     render json: {
       match: @match,
       stadium: @match.stadium,
@@ -24,6 +24,32 @@ class Api::V1::MatchesController < ApplicationController
     @match = Match.new(match_params)
     if @match.save
       render json: @match, status: :created
+    else
+      render json: { errors: @match.errors.full_messages }, status: :unprocessable_entity
+    end
+  end
+
+  def destroy
+    unless current_user.manager? || current_user.admin?
+      return render json: { error: "Unauthorized" }, status: :forbidden
+    end
+
+    @match = Match.find(params[:id])
+    if @match.destroy
+      render json: { message: "Match with id:#{@match.id} deleted successfully"}, status: :no_content
+    else
+      render json: { errors: @match.errors.full_messages }, status: :unprocessable_entity
+    end
+  end
+
+  def update 
+    unless current_user.manager? || current_user.admin?
+      return render json: { error: "Unauthorized" }, status: :forbidden
+    end
+
+    @match = Match.find(params[:id])
+    if @match.update(match_params)
+      render json: @match
     else
       render json: { errors: @match.errors.full_messages }, status: :unprocessable_entity
     end
