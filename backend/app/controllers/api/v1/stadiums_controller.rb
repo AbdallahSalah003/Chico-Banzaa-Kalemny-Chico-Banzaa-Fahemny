@@ -15,7 +15,7 @@ class Api::V1::StadiumsController < ApplicationController
 
   # POST /api/v1/stadiums 
   def create 
-    unless current_user.manager? || current_user.admin? 
+    unless (current_user.manager? || current_user.admin?) && (current_user.is_approved)
       return render json: {error: "Unauthoized"}, status: :forbidden
     end 
 
@@ -28,7 +28,7 @@ class Api::V1::StadiumsController < ApplicationController
   end
 
   def destroy
-    unless current_user.manager? || current_user.admin? 
+    unless (current_user.manager? || current_user.admin?) && (current_user.is_approved)
       return render json: {error: "Unauthoized"}, status: :forbidden
     end 
     @stadium = Stadium.find(params[:id])

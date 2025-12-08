@@ -40,6 +40,7 @@ const Signup = () => {
         } else {
             // result.error could be an array or string. Simplified handling:
             setError(JSON.stringify(result.error));
+            console.log(result.error)
         }
     };
 

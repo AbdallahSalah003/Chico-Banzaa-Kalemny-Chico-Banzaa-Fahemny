@@ -17,6 +17,9 @@ class Api::V1::TicketsController < ApplicationController
     )
   end
   def create
+    unless current_user.is_approved?
+      return render json: { error: "Your account is pending approval." }, status: :forbidden
+    end
     ActiveRecord::Base.transaction do
       @match = Match.find(params[:match_id])
       row_num = ticket_params[:row]
@@ -48,6 +51,9 @@ class Api::V1::TicketsController < ApplicationController
   end
 
   def destroy 
+    unless current_user.is_approved?
+      return render json: { error: "Your account is pending approval." }, status: :forbidden
+    end
     @ticket = current_user.tickets.find(params[:id])
     if @ticket.match.start_time > 3.days.from_now
       match_id = @ticket.match_id 

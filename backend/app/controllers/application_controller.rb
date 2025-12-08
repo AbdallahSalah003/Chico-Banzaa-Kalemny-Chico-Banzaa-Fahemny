@@ -10,7 +10,7 @@ class ApplicationController < ActionController::API
   def configure_permitted_parameters
     #allow these fields during signup
     devise_parameter_sanitizer.permit(:sign_up, keys: [
-      :username, :first_name, :last_name, :birth_date, 
+      :username, :email, :first_name, :last_name, :birth_date, 
       :gender, :city, :address, :role
     ])
     

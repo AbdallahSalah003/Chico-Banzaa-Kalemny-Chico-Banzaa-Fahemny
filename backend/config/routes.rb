@@ -18,7 +18,7 @@ Rails.application.routes.draw do
       
       resources :stadiums, only: [:index, :create, :show, :destroy]
       resources :tickets, only: [:destroy, :index]
-      
+      resources :teams, only: [:index]
       patch '/users/:id/approve', to: 'users#approve'
       resources :users, only: [:index, :destroy, :update]
     end

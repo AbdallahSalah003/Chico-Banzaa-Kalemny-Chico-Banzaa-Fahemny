@@ -21,8 +21,10 @@ const MatchDetails = () => {
         const fetchMatch = async () => {
             try {
                 const response = await apiClient.get(`/matches/${id}`);
-                setMatch({ ...response.data.match, stadium: response.data.stadium });
+                setMatch({ ...response.data.match, stadium: response.data.stadium, home_team: response.data.home_team, away_team: response.data.away_team });
+                console.log(response.data)
                 // reserved_seats comes as array of objects {row, seat, id}
+
                 const reservedSet = new Set(
                     response.data.reserved_seats.map(s => `${s.row}-${s.seat}`)
                 );
@@ -37,26 +39,78 @@ const MatchDetails = () => {
         fetchMatch();
     }, [id]);
 
-    // WebSocket Subscription
+    // // WebSocket Subscription
+    // useEffect(() => {
+    //     if (!cable) return;
+
+    //     const channel = cable.subscriptions.create(
+    //         { channel: 'MatchChannel', match_id: id },
+    //         {
+    //             received: (data) => {
+    //                 if (data.type === 'seat_booked') {
+    //                     setReservedSeats(prev => {
+    //                         const newSet = new Set(prev);
+    //                         newSet.add(`${data.row}-${data.seat}`);
+    //                         return newSet;
+    //                     });
+    //                     // If I had this selected, unselect it
+    //                     setSelectedSeats(prev => {
+    //                          const newSelected = new Set(prev);
+    //                          if(newSelected.has(`${data.row}-${data.seat}`)) {
+    //                              newSelected.delete(`${data.row}-${data.seat}`);
+    //                              // Maybe show a toast that "Selected seat was just taken"
+    //                          }
+    //                          return newSelected;
+    //                     })
+    //                 } else if (data.type === 'seat_canceled') {
+    //                     setReservedSeats(prev => {
+    //                         const newSet = new Set(prev);
+    //                         newSet.delete(`${data.row}-${data.seat}`);
+    //                         return newSet;
+    //                     });
+    //                 }
+    //             }
+    //         }
+    //     );
+
+    //     return () => {
+    //         channel.unsubscribe();
+    //     };
+    // }, [cable, id]);
+// WebSocket Subscription (Debug Version)
     useEffect(() => {
-        if (!cable) return;
+        if (!cable) {
+            console.log("❌ WebSocket: Cable object is missing/null");
+            return;
+        }
+
+        console.log(`🔌 WebSocket: Attempting to subscribe to MatchChannel for Match ID: ${id}`);
 
         const channel = cable.subscriptions.create(
             { channel: 'MatchChannel', match_id: id },
             {
+                connected: () => {
+                    console.log("✅ WebSocket: Connected to MatchChannel!");
+                },
+                disconnected: () => {
+                    console.log("⚠️ WebSocket: Disconnected from MatchChannel");
+                },
                 received: (data) => {
+                    console.log("📩 WebSocket: Received Data:", data); // <--- LOOK FOR THIS
+
                     if (data.type === 'seat_booked') {
                         setReservedSeats(prev => {
                             const newSet = new Set(prev);
                             newSet.add(`${data.row}-${data.seat}`);
                             return newSet;
                         });
-                        // If I had this selected, unselect it
+                        // Remove from selection if another user booked it
                         setSelectedSeats(prev => {
                              const newSelected = new Set(prev);
-                             if(newSelected.has(`${data.row}-${data.seat}`)) {
-                                 newSelected.delete(`${data.row}-${data.seat}`);
-                                 // Maybe show a toast that "Selected seat was just taken"
+                             const key = `${data.row}-${data.seat}`;
+                             if(newSelected.has(key)) {
+                                 newSelected.delete(key);
+                                 setMessage({ text: `Seat ${key} was just booked by someone else!`, type: 'error' });
                              }
                              return newSelected;
                         })
@@ -72,10 +126,10 @@ const MatchDetails = () => {
         );
 
         return () => {
+            console.log("🔌 WebSocket: Unsubscribing...");
             channel.unsubscribe();
         };
     }, [cable, id]);
-
     const toggleSeat = (row, seat) => {
         if(!user) {
              setMessage({ text: 'Please login to view/reserve seats.', type: 'error' });
@@ -100,12 +154,40 @@ const MatchDetails = () => {
         });
     };
 
-    const handleReservation = async () => {
-        // Here we loop through selected seats and create tickets
-        // The endpoint takes one ticket at a time based on ticket_params
-        // This might be slow for many seats, but backend seems designed for single ticket create or I loop.
-        // User requirements say "Reserve vacant seat/s", implying multiple.
+    // const handleReservation = async () => {
+    //     // Here we loop through selected seats and create tickets
+    //     // The endpoint takes one ticket at a time based on ticket_params
+    //     // This might be slow for many seats, but backend seems designed for single ticket create or I loop.
+    //     // User requirements say "Reserve vacant seat/s", implying multiple.
         
+    //     try {
+    //         const promises = Array.from(selectedSeats).map(seatKey => {
+    //             const [row, seat] = seatKey.split('-').map(Number);
+    //             return apiClient.post(`/matches/${id}/tickets`, {
+    //                 ticket: {
+    //                     row,
+    //                     seat,
+    //                     credit_card_number: paymentData.number,
+    //                     pin: paymentData.pin
+    //                 }
+    //             });
+    //         });
+
+    //         await Promise.all(promises);
+    //         setMessage({ text: 'Reservation Successful!', type: 'success' });
+    //         setSelectedSeats(new Set());
+    //         setShowPaymentModal(false);
+    //         setPaymentData({ number: '', pin: '' });
+    //     } catch (error) {
+    //         console.error("Reservation failed", error);
+    //         // Some might have failed, some succeeded. 
+    //         // Ideally backend supports batch or we handle partial failure.
+    //         // For now assume all or nothing or just show error.
+    //         setMessage({ text: 'Some reservations failed. Please check your tickets.', type: 'error' });
+    //         setShowPaymentModal(false);
+    //     }
+    // };
+    const handleReservation = async () => {
         try {
             const promises = Array.from(selectedSeats).map(seatKey => {
                 const [row, seat] = seatKey.split('-').map(Number);
@@ -120,15 +202,26 @@ const MatchDetails = () => {
             });
 
             await Promise.all(promises);
+
+            // ============================================================
+            // 1. IMMEDIATE UPDATE FIX
+            // Manually add the selected seats to the reserved list NOW.
+            // This ensures they turn RED instantly.
+            // ============================================================
+            setReservedSeats(prev => {
+                const newSet = new Set(prev);
+                selectedSeats.forEach(seat => newSet.add(seat));
+                return newSet;
+            });
+
             setMessage({ text: 'Reservation Successful!', type: 'success' });
+            
+            // 2. Clear selections (They are now reserved)
             setSelectedSeats(new Set());
             setShowPaymentModal(false);
             setPaymentData({ number: '', pin: '' });
         } catch (error) {
             console.error("Reservation failed", error);
-            // Some might have failed, some succeeded. 
-            // Ideally backend supports batch or we handle partial failure.
-            // For now assume all or nothing or just show error.
             setMessage({ text: 'Some reservations failed. Please check your tickets.', type: 'error' });
             setShowPaymentModal(false);
         }
@@ -145,7 +238,11 @@ const MatchDetails = () => {
             <div className="card">
                 <h2>{match.home_team?.name} vs {match.away_team?.name}</h2>
                 <p><strong>Venue:</strong> {stadium.name}</p>
+                <br/>
                 <p><strong>Date:</strong> {new Date(match.start_time).toLocaleString()}</p>
+                <br/>
+                <p><strong>Linesman1:</strong> {match.linesman1}</p>
+                <p><strong>Linesman2:</strong> {match.linesman2}</p>
             </div>
 
             {message.text && (

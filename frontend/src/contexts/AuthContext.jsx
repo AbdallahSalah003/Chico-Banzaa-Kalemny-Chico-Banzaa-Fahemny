@@ -1,6 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import apiClient from '../api/client';
-
+import { apiClient2 } from '../api/client';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -26,7 +25,7 @@ export const AuthProvider = ({ children }) => {
       // Devise default login is POST /users/sign_in or similar. 
       // Based on routes.rb: devise_for :users, path: '', path_names: { sign_in: 'login' }
       // So it is POST /login
-      const response = await apiClient.post('http://localhost:3000/login', {
+      const response = await apiClient2.post('/login', {
         user: {
             username: username, 
             password: password
@@ -59,7 +58,7 @@ export const AuthProvider = ({ children }) => {
   const signup = async (userData) => {
       try {
           // POST /signup
-          const response = await apiClient.post('http://localhost:3000/signup', {
+          const response = await apiClient2.post('/signup', {
               user: userData
           });
           // Usually signup also logs you in
@@ -80,7 +79,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-        await apiClient.delete('http://localhost:3000/logout');
+        await apiClient2.delete('/logout');
     } catch (e) {
         // ignore error
     }

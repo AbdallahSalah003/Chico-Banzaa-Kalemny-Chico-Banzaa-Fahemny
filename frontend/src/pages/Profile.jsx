@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import apiClient from '../api/client';
+import apiClient2 from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
 const Profile = () => {
@@ -35,7 +35,9 @@ const Profile = () => {
         e.preventDefault();
         setMessage({ text: '', type: '' });
         try {
-            const response = await apiClient.put(`/users/${user.id}`, { user: formData });
+            const response = await apiClient2.patch(`/users/${user.id}`, { user: formData });
+            console.log({ user: formData })
+
             // Ideally update auth context with new user data
             setMessage({ text: 'Profile updated successfully!', type: 'success' });
         } catch (error) {

@@ -8,16 +8,20 @@ class Api::V1::MatchesController < ApplicationController
   end
   def show
     @match = Match.find(params[:id])
+    @team1 = Team.find(@match.home_team_id)
+    @team2 = Team.find(@match.away_team_id)
     #allowing sami draw the red/green boxes
     reserved_seats = @match.tickets.select(:row, :seat, :id)
     render json: {
       match: @match,
       stadium: @match.stadium,
-      reserved_seats: reserved_seats
+      reserved_seats: reserved_seats,
+      home_team: @team1,
+      away_team: @team2
     }
   end
   def create
-    unless current_user.manager? || current_user.admin?
+    unless (current_user.manager? || current_user.admin?) && (current_user.is_approved)
       return render json: { error: "Unauthorized" }, status: :forbidden
     end
 
@@ -30,7 +34,7 @@ class Api::V1::MatchesController < ApplicationController
   end
 
   def destroy
-    unless current_user.manager? || current_user.admin?
+    unless (current_user.manager? || current_user.admin?) && (current_user.is_approved)
       return render json: { error: "Unauthorized" }, status: :forbidden
     end
 
@@ -43,7 +47,7 @@ class Api::V1::MatchesController < ApplicationController
   end
 
   def update 
-    unless current_user.manager? || current_user.admin?
+    unless (current_user.manager? || current_user.admin?) && (current_user.is_approved)
       return render json: { error: "Unauthorized" }, status: :forbidden
     end
 

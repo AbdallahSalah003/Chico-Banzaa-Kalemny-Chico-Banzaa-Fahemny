@@ -1,26 +1,36 @@
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:3000/api/v1';
+const API_BASE = 'http://localhost:3000';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json' 
   },
 });
 
-// Add a request interceptor to include the auth token
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`; // Adjust based on backend auth expectation (Devise usually uses Authorization header or cookie)
-    }
-    return config;
+const apiClient2 = axios.create({
+  baseURL: API_BASE,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json' 
   },
-  (error) => {
-    return Promise.reject(error);
+});
+
+const attachToken = (config) => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`;
   }
-);
+  return config;
+};
+
+apiClient.interceptors.request.use(attachToken, (error) => Promise.reject(error));
+apiClient2.interceptors.request.use(attachToken, (error) => Promise.reject(error));
+
 
 export default apiClient;
+
+export { apiClient2 };
